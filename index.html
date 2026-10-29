@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pilavcı - Sokak Lezzetleri Simülasyonu</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body {
+            background-color: #121212;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #game-container {
+            width: 100%;
+            max-width: 430px;
+            height: 100%;
+            max-height: 860px;
+            background: linear-gradient(180deg, #d7ccc8 0%, #bcaaa4 30%, #8d6e63 100%);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border-radius: 28px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+            border: 4px solid #2c2c2c;
+        }
+
+        /* Üst Bilgi Barı (Saat, Kasa, İtibar) */
+        #top-hud {
+            position: absolute;
+            top: 12px; left: 15px; right: 15px;
+            z-index: 30;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 800;
+            font-size: 13px;
+            color: #fff;
+        }
+        .hud-badge {
+            background: rgba(0, 0, 0, 0.75);
+            padding: 5px 10px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            border: 1px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(4px);
+        }
+        .rush-badge {
+            background: #c62828 !important;
+            animation: pulseRush 1s infinite alternate;
+        }
+        @keyframes pulseRush {
+            from { transform: scale(1); }
+            to { transform: scale(1.05); }
+        }
+
+        /* 1. ÜST BÖLÜM: DAVLUMBAZ, FİŞ VE İÇECEK RAFI */
+        #hood-section {
+            position: relative;
+            height: 44%;
+            background: linear-gradient(180deg, #9ea7aa 0%, #cfd8dc 45%, #b0bec5 50%, #78909c 100%);
+            border-bottom: 6px solid #546e7a;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            box-shadow: inset 0 -15px 25px rgba(0,0,0,0.25);
+        }
+
+        #shutter-lines {
+            width: 90%;
+            height: 56%;
+            background: repeating-linear-gradient(180deg, #eceff1 0px, #cfd8dc 8px, #90a4ae 12px, #607d8b 14px);
+            border-left: 6px solid #78909c;
+            border-right: 6px solid #78909c;
+            border-top: 4px solid #546e7a;
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+            padding-bottom: 6px;
+            padding-left: 14px;
+            box-shadow: inset 0 10px 20px rgba(0,0,0,0.3);
+        }
+
+        #drink-shelf {
+            display: flex;
+            gap: 12px;
+            z-index: 15;
+            background: linear-gradient(180deg, #cfd8dc, #90a4ae);
+            padding: 6px 14px;
+            border-radius: 12px;
+            border-bottom: 4px solid #455a64;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.35);
+        }
+        .drink-slot {
+            width: 52px;
+            height: 64px;
+            background: rgba(255, 255, 255, 0.55);
+            border-radius: 10px;
+            border: 2px solid transparent;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            padding: 3px;
+            transition: transform 0.15s, border-color 0.2s, background 0.2s;
+        }
+        .drink-slot:hover { background: rgba(255, 255, 255, 0.85); }
+        .drink-slot:active { transform: scale(0.92); }
+        .drink-slot.selected {
+            border-color: #f39c12;
+            background: #fff9c4;
+            transform: translateY(-5px);
+            box-shadow: 0 5px 12px rgba(243, 156, 18, 0.5);
+        }
+        .drink-slot img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 3px 4px rgba(0,0,0,0.3));
+        }
+
+        /* Sipariş Fişi */
+        #receipt-wrapper {
+            position: absolute;
+            top: 18px;
+            z-index: 25;
+            width: 225px;
+            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.4));
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-origin: top center;
+        }
+        .pink-tape {
+            width: 26px;
+            height: 34px;
+            background: rgba(244, 143, 177, 0.9);
+            position: absolute;
+            top: -14px;
+            left: 50%;
+            transform: translateX(-50%) rotate(-3deg);
+            z-index: 26;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        #receipt-paper {
+            background: #fffef9;
+            padding: 12px 14px 10px 14px;
+            color: #2c2c2c;
+            position: relative;
+        }
+        #receipt-paper::before, #receipt-paper::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 8px;
+            background-size: 12px 100%;
+        }
+        #receipt-paper::before {
+            top: -8px;
+            background-image: linear-gradient(135deg, transparent 50%, #fffef9 50%), linear-gradient(225deg, transparent 50%, #fffef9 50%);
+        }
+        #receipt-paper::after {
+            bottom: -8px;
+            background-image: linear-gradient(45deg, transparent 50%, #fffef9 50%), linear-gradient(315deg, transparent 50%, #fffef9 50%);
+        }
+
+        .receipt-header {
+            text-align: center;
+            font-weight: 900;
+            font-size: 13px;
+            color: #c62828;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .receipt-divider {
+            border-top: 1.5px dashed #95a5a6;
+            margin: 5px 0;
+        }
+        .receipt-items-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            align-items: center;
+            min-height: 58px;
+            padding: 4px 0;
+        }
+        .receipt-item-photo {
+            width: 46px;
+            height: 46px;
+            background: #f4f4ee;
+            border: 1px solid #e0e0d5;
+            border-radius: 10px;
+            padding: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .receipt-item-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .receipt-footer {
+            display: flex;
+            justify-content: space-between;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: 900;
+            font-size: 13px;
+            color: #1a1a1a;
+            margin-top: 2px;
+        }
+        .barcode {
+            height: 18px;
+            width: 75%;
+            margin: 5px auto 0 auto;
+            background: repeating-linear-gradient(90deg, #111 0px, #111 3px, transparent 3px, transparent 5px, #111 5px, #111 6px, transparent 6px, transparent 9px, #111 9px, #111 13px, transparent 13px, transparent 15px);
+        }
+        .patience-bar {
+            width: 100%;
+            height: 5px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+        .patience-fill {
+            height: 100%;
+            width: 100%;
+            background: #2ecc71;
+            transition: width 0.2s linear, background-color 0.3s;
+        }
+
+        /* 2. ALT BÖLÜM: ÇELİK TEZGAH */
+        #steel-counter {
+            flex: 1;
+            background: linear-gradient(180deg, #b0bec5 0%, #90a4ae 55%, #78909c 92%, #455a64 100%);
+            padding: 10px 14px 12px 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            box-shadow: inset 0 8px 15px rgba(255,255,255,0.4);
+        }
+
+        .counter-hint {
+            text-align: center;
+            font-size: 10px;
+            color: #263238;
+            font-weight: 700;
+            margin-bottom: 2px;
+            opacity: 0.8;
+        }
+
+        #pans-rack {
+            background: #263238;
+            padding: 8px;
+            border-radius: 14px;
+            border: 3px solid #37474f;
+            box-shadow: inset 0 6px 12px rgba(0,0,0,0.8), 0 2px 0 rgba(255,255,255,0.5);
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        .gastro-pan {
+            background: linear-gradient(145deg, #37474f, #263238);
+            border-radius: 10px;
+            border: 2px solid #546e7a;
+            height: 80px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            overflow: hidden;
+            box-shadow: inset 0 3px 8px rgba(0,0,0,0.7);
+            transition: transform 0.1s;
+        }
+        .gastro-pan:active { transform: scale(0.95); }
+        .gastro-pan img.pan-food {
+            width: 96%;
+            height: 92%;
+            object-fit: contain;
+            pointer-events: none;
+            filter: drop-shadow(0 3px 5px rgba(0,0,0,0.5));
+        }
+        .closed-lid-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 5;
+        }
+        .closed-lid-overlay img { width: 100%; height: 100%; object-fit: contain; }
+        .gastro-pan.closed .closed-lid-overlay { display: flex; }
+
+        #prep-zone {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 2px;
+            position: relative;
+        }
+
+        .side-bowls {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: center;
+        }
+        .sauce-cup {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #cfd8dc, #78909c);
+            padding: 5px;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.8);
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.15s;
+        }
+        .sauce-cup:active { transform: scale(0.9); }
+        .sauce-inner { width: 100%; height: 100%; border-radius: 50%; box-shadow: inset 0 4px 8px rgba(0,0,0,0.6); }
+        .pepper-fill { background: radial-gradient(circle at 35% 35%, #5d4037, #271c19); }
+        .ketchup-fill { background: radial-gradient(circle at 35% 35%, #d32f2f, #8b0000); }
+
+        #wooden-tray {
+            width: 235px;
+            height: 195px;
+            background: linear-gradient(145deg, #d7996e, #b87343);
+            border-radius: 26px;
+            border-bottom: 8px solid #7c4722;
+            border-right: 4px solid #8d522a;
+            border-left: 4px solid #e0a980;
+            border-top: 3px solid #e6b692;
+            box-shadow: 0 15px 25px rgba(0,0,0,0.45);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            padding: 10px;
+        }
+        #wooden-tray::before {
+            content: "";
+            position: absolute;
+            top: 10px; bottom: 10px; left: 10px; right: 10px;
+            border-radius: 18px;
+            background: linear-gradient(145deg, #b87343, #c98657);
+            box-shadow: inset 0 5px 12px rgba(0,0,0,0.45);
+        }
+
+        #plate-container {
+            position: relative;
+            width: 185px;
+            height: 185px;
+            z-index: 5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        #plate-container:active { transform: scale(0.96); }
+        #plate-img {
+            position: absolute;
+            width: 100%; height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 8px 14px rgba(0,0,0,0.45));
+        }
+        .food-layer {
+            position: absolute;
+            width: 68%; height: 68%;
+            object-fit: contain;
+            pointer-events: none;
+            animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn {
+            from { transform: scale(0.5); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        #pepper-layer {
+            position: absolute;
+            width: 55%; height: 55%;
+            z-index: 6;
+            pointer-events: none;
+            background-image: radial-gradient(#1a1a1a 1.5px, transparent 1.5px), radial-gradient(#2c2c2c 1.2px, transparent 1.2px);
+            background-size: 16px 16px;
+            background-position: 0 0, 8px 8px;
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        #tray-drink-preview {
+            position: absolute;
+            right: -8px; top: -12px;
+            width: 58px; height: 72px;
+            z-index: 12;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            filter: drop-shadow(0 6px 10px rgba(0,0,0,0.45));
+            animation: popIn 0.2s ease;
+            cursor: pointer;
+        }
+        #tray-drink-preview img { width: 100%; height: 100%; object-fit: contain; }
+
+        .right-tools { display: flex; flex-direction: column; align-items: center; }
+        #trash-bin {
+            width: 56px; height: 56px;
+            cursor: pointer;
+            transition: transform 0.15s;
+            filter: drop-shadow(0 5px 8px rgba(0,0,0,0.4));
+        }
+        #trash-bin:active { transform: scale(0.88); }
+        #trash-bin img { width: 100%; height: 100%; object-fit: contain; }
+
+        #serve-btn {
+            background: linear-gradient(180deg, #2ecc71, #27ae60);
+            color: white;
+            border: none;
+            border-bottom: 4px solid #1e8449;
+            border-radius: 14px;
+            padding: 13px;
+            font-size: 15px;
+            font-weight: 900;
+            width: 100%;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: all 0.15s;
+        }
+        #serve-btn:active { transform: translateY(2px); border-bottom-width: 2px; }
+
+        /* Gün Sonu Özet Ekranı (Modal) */
+        #day-summary-modal {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        #day-summary-modal h2 { color: #f39c12; margin-bottom: 15px; font-size: 24px; }
+        #day-summary-modal p { font-size: 15px; margin: 8px 0; color: #ddd; }
+        #next-day-btn {
+            margin-top: 20px;
+            background: #e67e22;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+        }
+
+        #toast-msg {
+            position: absolute;
+            top: 48%; left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: rgba(0,0,0,0.85);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 800;
+            font-size: 14px;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.25s ease;
+            white-space: nowrap;
+        }
+        #toast-msg.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- Üst Bilgi Çubuğu (Saat, Kasa, İtibar) -->
+        <div id="top-hud">
+            <div class="hud-badge" id="time-badge">⏰ 10:00</div>
+            <div class="hud-badge">💰 <span id="money-display">0.00 ₺</span></div>
+            <div class="hud-badge" id="rep-badge">⭐ <span id="rep-display">100</span></div>
+        </div>
+
+        <div id="toast-msg">Harika Servis!</div>
+
+        <!-- Gün Sonu Özet Paneli -->
+        <div id="day-summary-modal">
+            <h2 id="summary-title">GÜN BİTTİ (1. GÜN)</h2>
+            <p id="summary-orders">Tamamlanan Sipariş: 0</p>
+            <p id="summary-earned">Günlük Kazanç: 0.00 ₺</p>
+            <p id="summary-rep">İtibar Puanı: 100 ⭐</p>
+            <button id="next-day-btn" onclick="startNextDay()">YENİ GÜNE BAŞLA</button>
+        </div>
+
+        <!-- 1. ÜST BÖLÜM: DAVLUMBAZ, SİPARİŞ FİŞİ VE İÇECEK RAFI -->
+        <div id="hood-section">
+            <div id="receipt-wrapper">
+                <div class="pink-tape"></div>
+                <div id="receipt-paper">
+                    <div class="receipt-header" id="order-number-title">1 NUMARALI SİPARİŞ</div>
+                    <div class="receipt-divider"></div>
+                    
+                    <div class="receipt-items-grid" id="receipt-icons"></div>
+
+                    <div class="receipt-divider"></div>
+                    <div class="receipt-footer">
+                        <span>TOTAL</span>
+                        <span id="receipt-total">60.00 ₺</span>
+                    </div>
+                    <div class="barcode"></div>
+                    <div class="patience-bar"><div id="patience-fill" class="patience-fill"></div></div>
+                </div>
+            </div>
+
+            <div id="shutter-lines">
+                <div id="drink-shelf">
+                    <div class="drink-slot" id="drink-ayran" onclick="selectDrink('ayran')">
+                        <img id="img-drink-ayran" src="assets/icecek_ayran Arka Planı Silindi.png" onerror="this.src='assets/icecek_ayran.png'" alt="Ayran">
+                    </div>
+                    <div class="drink-slot" id="drink-salgam" onclick="selectDrink('salgam')">
+                        <img id="img-drink-salgam" src="assets/icecek_salgam Arka Planı Silindi.png" onerror="this.src='assets/icecek_salgam.png'" alt="Şalgam">
+                    </div>
+                    <div class="drink-slot" id="drink-gazoz" onclick="selectDrink('gazoz')">
+                        <img id="img-drink-gazoz" src="assets/icecek_gazoz Arka Planı Silindi.png" onerror="this.src='assets/icecek_gazoz.png'" alt="Gazoz">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. ALT BÖLÜM: ÇELİK TEZGAH -->
+        <div id="steel-counter">
+            <div class="counter-hint" id="game-status-hint">Mesai Başladı: 10:00 (Hızlı ol!)</div>
+
+            <div id="pans-rack">
+                <div class="gastro-pan" id="pan-sade" onclick="togglePan('sade')" oncontextmenu="event.preventDefault(); toggleLid('sade');">
+                    <img class="pan-food" src="assets/kuvet_sade Arka Planı Silindi.png" alt="Sade">
+                    <div class="closed-lid-overlay"><img src="assets/kuvet_kapak Arka Planı Silindi.png" alt="Kapak"></div>
+                </div>
+                <div class="gastro-pan" id="pan-nohutlu" onclick="togglePan('nohutlu')" oncontextmenu="event.preventDefault(); toggleLid('nohutlu');">
+                    <img class="pan-food" src="assets/kuvet_nohutlu Arka Planı Silindi.png" alt="Nohutlu">
+                    <div class="closed-lid-overlay"><img src="assets/kuvet_kapak Arka Planı Silindi.png" alt="Kapak"></div>
+                </div>
+                <div class="gastro-pan" id="pan-tavuk" onclick="togglePan('tavuk')" oncontextmenu="event.preventDefault(); toggleLid('tavuk');">
+                    <img class="pan-food" src="assets/kuvet_tavuk Arka Planı Silindi.png" alt="Tavuk">
+                    <div class="closed-lid-overlay"><img src="assets/kuvet_kapak Arka Planı Silindi.png" alt="Kapak"></div>
+                </div>
+                <div class="gastro-pan" id="pan-misir" onclick="togglePan('misir')" oncontextmenu="event.preventDefault(); toggleLid('misir');">
+                    <img class="pan-food" src="assets/kuvet_misir Arka Planı Silindi.png" alt="Mısır">
+                    <div class="closed-lid-overlay"><img src="assets/kuvet_kapak Arka Planı Silindi.png" alt="Kapak"></div>
+                </div>
+            </div>
+
+            <div id="prep-zone">
+                <div class="side-bowls">
+                    <div class="sauce-cup" onclick="togglePepper()" title="Karabiber">
+                        <div class="sauce-inner pepper-fill"></div>
+                    </div>
+                    <div class="sauce-cup" onclick="clearPlate()" title="Temizle">
+                        <div class="sauce-inner ketchup-fill"></div>
+                    </div>
+                </div>
+
+                <div id="wooden-tray">
+                    <div id="tray-drink-preview" onclick="selectDrink(currentPlate.drink)">
+                        <img id="tray-drink-img" src="" alt="İçecek">
+                    </div>
+                    <div id="plate-container" onclick="serveOrder()">
+                        <img id="plate-img" src="assets/tabak Arka Planı Silindi.png" alt="Tabak">
+                        <div id="pepper-layer"></div>
+                    </div>
+                </div>
+
+                <div class="right-tools">
+                    <div id="trash-bin" onclick="clearPlate()" title="Çöp">
+                        <img src="assets/cop_kutusu Arka Planı Silindi.png" alt="Çöp">
+                    </div>
+                </div>
+            </div>
+
+            <button id="serve-btn" onclick="serveOrder()">SİPARİŞİ TESLİM ET</button>
+        </div>
+    </div>
+
+    <script>
+        const ASSETS = {
+            tabak: "assets/tabak Arka Planı Silindi.png",
+            pilav_sade: "assets/pilav_sade Arka Planı Silindi.png",
+            pilav_nohutlu: "assets/pilav_nohutlu Arka Planı Silindi.png",
+            tavuk_katmani: "assets/tavuk_katmani Arka Planı Silindi.png",
+            misir_katmani: "assets/misir_katmani Arka Planı Silindi.png",
+            cop_kutusu: "assets/cop_kutusu Arka Planı Silindi.png",
+            kuvet_kapak: "assets/kuvet_kapak Arka Planı Silindi.png"
+        };
+
+        let money = 0;
+        let reputation = 100;
+        let currentDay = 1;
+        let orderCounter = 1;
+
+        // Gün ve Saat Sistemi (10:00 - 19:00)
+        let gameHour = 10;
+        let gameMinute = 0;
+        let clockTimer = null;
+        let isDayActive = true;
+        let dailyCompletedOrders = 0;
+        let dailyEarnedMoney = 0;
+
+        let pans = {
+            sade: { isOpen: true },
+            nohutlu: { isOpen: true },
+            tavuk: { isOpen: true },
+            misir: { isOpen: true }
+        };
+
+        let currentPlate = {
+            base: null,
+            chicken: false,
+            corn: false,
+            drink: null,
+            pepper: false
+        };
+
+        let currentOrder = null;
+        let patienceTimer = null;
+        let patienceLevel = 100;
+
+        function getDrinkImgSrc(drinkKey) {
+            const imgEl = document.getElementById(`img-drink-${drinkKey}`);
+            return imgEl ? imgEl.src : "";
+        }
+
+        function showToast(text, color = "#2ecc71") {
+            const toast = document.getElementById('toast-msg');
+            toast.innerText = text;
+            toast.style.border = `2px solid ${color}`;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 1400);
+        }
+
+        function toggleLid(panName) {
+            if ((panName === 'sade' && pans.sade.isOpen && !pans.nohutlu.isOpen) ||
+                (panName === 'nohutlu' && pans.nohutlu.isOpen && !pans.sade.isOpen)) {
+                showToast("En az bir pilav küveti açık kalmalı!", "#e74c3c");
+                return;
+            }
+            pans[panName].isOpen = !pans[panName].isOpen;
+            const panEl = document.getElementById(`pan-${panName}`);
+            if (pans[panName].isOpen) {
+                panEl.classList.remove('closed');
+            } else {
+                panEl.classList.add('closed');
+                if (currentPlate.base === panName) currentPlate.base = null;
+                if (panName === 'tavuk') currentPlate.chicken = false;
+                if (panName === 'misir') currentPlate.corn = false;
+            }
+            updatePlateVisuals();
+        }
+
+        function togglePan(type) {
+            if (!pans[type].isOpen) {
+                toggleLid(type);
+                return;
+            }
+            if (type === 'sade' || type === 'nohutlu') {
+                currentPlate.base = type;
+            } else if (type === 'tavuk') {
+                if (!currentPlate.base) { showToast("Önce pilav koymalısın Usta!", "#f39c12"); return; }
+                currentPlate.chicken = !currentPlate.chicken;
+            } else if (type === 'misir') {
+                if (!currentPlate.base) { showToast("Önce pilav koymalısın Usta!", "#f39c12"); return; }
+                currentPlate.corn = !currentPlate.corn;
+            }
+            updatePlateVisuals();
+        }
+
+        function togglePepper() {
+            if (!currentPlate.base) return;
+            currentPlate.pepper = !currentPlate.pepper;
+            document.getElementById('pepper-layer').style.opacity = currentPlate.pepper ? "0.75" : "0";
+        }
+
+        function selectDrink(drinkKey) {
+            if (!drinkKey) return;
+            const preview = document.getElementById('tray-drink-preview');
+            const previewImg = document.getElementById('tray-drink-img');
+            document.querySelectorAll('.drink-slot').forEach(el => el.classList.remove('selected'));
+
+            if (currentPlate.drink === drinkKey) {
+                currentPlate.drink = null;
+                preview.style.display = 'none';
+            } else {
+                currentPlate.drink = drinkKey;
+                document.getElementById(`drink-${drinkKey}`).classList.add('selected');
+                previewImg.src = getDrinkImgSrc(drinkKey);
+                preview.style.display = 'flex';
+            }
+        }
+
+        function clearPlate() {
+            currentPlate = { base: null, chicken: false, corn: false, drink: null, pepper: false };
+            document.querySelectorAll('.drink-slot').forEach(el => el.classList.remove('selected'));
+            document.getElementById('tray-drink-preview').style.display = 'none';
+            document.getElementById('pepper-layer').style.opacity = "0";
+            updatePlateVisuals();
+        }
+
+        function updatePlateVisuals() {
+            const container = document.getElementById('plate-container');
+            container.querySelectorAll('.food-layer').forEach(l => l.remove());
+
+            if (currentPlate.base === 'sade') {
+                container.insertAdjacentHTML('beforeend', `<img src="${ASSETS.pilav_sade}" class="food-layer" style="z-index:2;">`);
+            } else if (currentPlate.base === 'nohutlu') {
+                container.insertAdjacentHTML('beforeend', `<img src="${ASSETS.pilav_nohutlu}" class="food-layer" style="z-index:2;">`);
+            }
+            if (currentPlate.chicken) {
+                container.insertAdjacentHTML('beforeend', `<img src="${ASSETS.tavuk_katmani}" class="food-layer" style="z-index:3;">`);
+            }
+            if (currentPlate.corn) {
+                container.insertAdjacentHTML('beforeend', `<img src="${ASSETS.misir_katmani}" class="food-layer" style="z-index:4;">`);
+            }
+        }
+
+        // Saat ve Yoğunluk Kontrolü (10:00 - 19:00)
+        function startClock() {
+            gameHour = 10;
+            gameMinute = 0;
+            isDayActive = true;
+            dailyCompletedOrders = 0;
+            dailyEarnedMoney = 0;
+
+            if (clockTimer) clearInterval(clockTimer);
+
+            clockTimer = setInterval(() => {
+                if (!isDayActive) return;
+
+                gameMinute += 15; // Her adımda 15 dakika ilerler
+                if (gameMinute >= 60) {
+                    gameMinute = 0;
+                    gameHour++;
+                }
+
+                updateClockUI();
+
+                // 19:00'da mesai biter
+                if (gameHour >= 19) {
+                    endDay();
+                }
+            }, 3500); // 3.5 saniyede 1 oyun saati dakikası akar
+        }
+
+        function updateClockUI() {
+            const timeStr = `${gameHour}:${gameMinute === 0 ? '00' : gameMinute}`;
+            const timeBadge = document.getElementById('time-badge');
+            const rushBadge = document.getElementById('top-hud');
+            const hint = document.getElementById('game-status-hint');
+
+            timeBadge.innerText = `⏰ ${timeStr}`;
+
+            // Yoğun Saatler: 12:00 - 14:00 ve 17:00 - 18:00 arası yoğunluk (Rush Hour)
+            let isRushHour = (gameHour >= 12 && gameHour < 14) || (gameHour >= 17 && gameHour < 18);
+            if (isRushHour) {
+                timeBadge.classList.add('rush-badge');
+                hint.innerText = "🔥 YOĞUN SAATLER! Daha hızlı ol ve ekstra itibar kazan!";
+                hint.style.color = "#c62828";
+            } else {
+                timeBadge.classList.remove('rush-badge');
+                hint.innerText = `Mesai Devam Ediyor (${timeStr})`;
+                hint.style.color = "#263238";
+            }
+        }
+
+        function spawnOrder() {
+            if (!isDayActive) return;
+
+            const wrapper = document.getElementById('receipt-wrapper');
+            wrapper.style.transform = 'scale(0.85) translateY(-25px)';
+
+            setTimeout(() => {
+                let availableBases = [];
+                if (pans.sade.isOpen) availableBases.push('sade');
+                if (pans.nohutlu.isOpen) availableBases.push('nohutlu');
+
+                let baseOrder = availableBases[Math.floor(Math.random() * availableBases.length)];
+                let chickenOrder = pans.tavuk.isOpen && Math.random() > 0.45;
+                let cornOrder = pans.misir.isOpen && Math.random() > 0.45;
+                let drinksList = [null, 'ayran', 'salgam', 'gazoz'];
+                let drinkOrder = drinksList[Math.floor(Math.random() * drinksList.length)];
+
+                let price = baseOrder === 'nohutlu' ? 55 : 45;
+                if (chickenOrder) price += 30;
+                if (cornOrder) price += 15;
+                if (drinkOrder) price += 20;
+
+                currentOrder = {
+                    orderNo: orderCounter,
+                    base: baseOrder,
+                    chicken: chickenOrder,
+                    corn: cornOrder,
+                    drink: drinkOrder,
+                    price: price
+                };
+
+                document.getElementById('order-number-title').innerText = `${orderCounter} NUMARALI SİPARİŞ`;
+                document.getElementById('receipt-total').innerText = price.toFixed(2) + " ₺";
+
+                const iconsBox = document.getElementById('receipt-icons');
+                iconsBox.innerHTML = '';
+
+                if (baseOrder === 'sade') {
+                    iconsBox.innerHTML += `<div class="receipt-item-photo"><img src="${ASSETS.pilav_sade}" alt="Sade"></div>`;
+                } else {
+                    iconsBox.innerHTML += `<div class="receipt-item-photo"><img src="${ASSETS.pilav_nohutlu}" alt="Nohutlu"></div>`;
+                }
+                if (chickenOrder) {
+                    iconsBox.innerHTML += `<div class="receipt-item-photo"><img src="${ASSETS.tavuk_katmani}" alt="Tavuk"></div>`;
+                }
+                if (cornOrder) {
+                    iconsBox.innerHTML += `<div class="receipt-item-photo"><img src="${ASSETS.misir_katmani}" alt="Mısır"></div>`;
+                }
+                if (drinkOrder) {
+                    iconsBox.innerHTML += `<div class="receipt-item-photo"><img src="${getDrinkImgSrc(drinkOrder)}" alt="İçecek"></div>`;
+                }
+
+                wrapper.style.transform = 'scale(1) translateY(0)';
+            }, 150);
+
+            patienceLevel = 100;
+            if (patienceTimer) clearInterval(patienceTimer);
+
+            // Yoğun saatlerde sabır barı biraz daha hızlı tükenir
+            let isRushHour = (gameHour >= 12 && gameHour < 14) || (gameHour >= 17 && gameHour < 18);
+            let decreaseRate = isRushHour ? 1.8 : 1.0;
+
+            patienceTimer = setInterval(() => {
+                if (!isDayActive) return;
+
+                patienceLevel -= decreaseRate;
+                const fill = document.getElementById('patience-fill');
+                fill.style.width = patienceLevel + '%';
+                fill.style.backgroundColor = patienceLevel < 35 ? '#e74c3c' : '#2ecc71';
+
+                if (patienceLevel <= 0) {
+                    clearInterval(patienceTimer);
+                    // Dengeli İtibar Sistemi: Tek müşteri hatası itibarı çok düşürmez (-2 veya -3 puan)
+                    reputation = Math.max(0, reputation - 2);
+                    updateStats();
+                    showToast(`${orderCounter} Nolu Sipariş Kaçtı! (-2⭐)`, "#e74c3c");
+                    orderCounter++;
+                    clearPlate();
+                    spawnOrder();
+                }
+            }, 500);
+        }
+
+        function serveOrder() {
+            if (!currentOrder || !isDayActive) return;
+
+            let match = (
+                currentPlate.base === currentOrder.base &&
+                currentPlate.chicken === currentOrder.chicken &&
+                currentPlate.corn === currentOrder.corn &&
+                currentPlate.drink === currentOrder.drink
+            );
+
+            if (match) {
+                clearInterval(patienceTimer);
+                let isRushHour = (gameHour >= 12 && gameHour < 14) || (gameHour >= 17 && gameHour < 18);
+                
+                // Yoğun saatlerde hızlı servis yapıldıysa ekstra itibar ödülü!
+                let repBonus = 0;
+                if (isRushHour && patienceLevel > 60) {
+                    repBonus = 1;
+                    reputation = Math.min(100, reputation + 1);
+                }
+
+                let tip = Math.floor(patienceLevel / 10) * 2;
+                let totalEarned = currentOrder.price + tip;
+                money += totalEarned;
+                dailyEarnedMoney += totalEarned;
+                dailyCompletedOrders++;
+
+                updateStats();
+                clearPlate();
+                
+                let toastText = `#${orderCounter} Servis Edildi! +${totalEarned.toFixed(2)} ₺`;
+                if (repBonus > 0) toastText += " (Yoğunluk Bonusu +1⭐!)";
+                showToast(toastText, "#2ecc71");
+
+                orderCounter++;
+                spawnOrder();
+            } else {
+                // Dengeli İtibar Puanı: Yanlış siparişte ufak bir ceza (-1 puan)
+                reputation = Math.max(0, reputation - 1);
+                updateStats();
+                showToast("Sipariş fişle uyuşmuyor Usta! (-1⭐)", "#e74c3c");
+            }
+        }
+
+        function endDay() {
+            isDayActive = false;
+            if (patienceTimer) clearInterval(patienceTimer);
+            if (clockTimer) clearInterval(clockTimer);
+
+            // Modal özet ekranını doldur
+            document.getElementById('summary-title').innerText = `${currentDay}. GÜN BİTTİ`;
+            document.getElementById('summary-orders').innerText = `Tamamlanan Sipariş: ${dailyCompletedOrders}`;
+            document.getElementById('summary-earned').innerText = `Günlük Kazanç: ${dailyEarnedMoney.toFixed(2)} ₺`;
+            document.getElementById('summary-rep').innerText = `Mevcut İtibar Puanı: ${reputation} ⭐`;
+            document.getElementById('day-summary-modal').style.display = 'flex';
+        }
+
+        function startNextDay() {
+            currentDay++;
+            document.getElementById('day-summary-modal').style.display = 'none';
+            clearPlate();
+            startClock();
+            spawnOrder();
+        }
+
+        function updateStats() {
+            document.getElementById('money-display').innerText = `${money.toFixed(2)} ₺`;
+            document.getElementById('rep-display').innerText = `${reputation}`;
+        }
+
+        window.onload = function() {
+            startClock();
+            spawnOrder();
+        };
+    </script>
+</body>
+</html>
